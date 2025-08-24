@@ -1410,4 +1410,4 @@ if __name__ == "__main__":
         args.checkpoint_dir,
         args.model_cfg,
     )
-    demo.launch(server_port=args.port)
+    demo.launch(server_port=args.port, share=True)
