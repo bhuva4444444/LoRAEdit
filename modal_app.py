@@ -169,6 +169,20 @@ def inference(sequence_name: str):
         print(f"❌ Inference process failed.")
         raise RuntimeError("Inference failed. Check the logs for details.")
 
+# --- Jupyter Notebook Launcher ---
+@stub.jupyter(
+    image=image,
+    gpu="A10G",
+    network_file_systems={str(MODAL_NFS_ROOT): shared_volume},
+    timeout=3600, # 1-hour timeout for the Jupyter session
+)
+def jupyter():
+    """
+    This function is a stub that launches a Jupyter environment in the cloud.
+    Modal's @stub.jupyter decorator handles the setup.
+    """
+    pass
+
 # --- Main CLI Block ---
 # This allows the user to run the functions from the command line using 'modal run'.
 @stub.local_entrypoint()
@@ -176,30 +190,36 @@ def main(
     sequence_name: str = "my_awesome_video",
     skip_train: bool = False,
     skip_inference: bool = False,
+    jupyter_mode: bool = False,
 ):
     """
     Main entrypoint to run the LoRA-Edit workflow on Modal.
 
+    This script supports two modes:
+    1. Automated batch mode (default): Runs training and/or inference.
+    2. Interactive Jupyter mode: Launches a Jupyter notebook in the cloud.
+
+    --- Automated Mode ---
     How to use:
-    1.  First, run the local preprocessing UI to generate your data:
-        > python predata_app.py
+    1.  Run the local UI to prepare data: `python predata_app.py`
+    2.  Upload data to NFS: `modal nfs put lora-edit-data processed_data/my_awesome_video /my_awesome_video`
+    3.  Run training & inference: `modal run modal_app.py --sequence-name my_awesome_video`
+    4.  Run inference only: `modal run modal_app.py --sequence-name my_awesome_video --skip-train`
+        (after uploading your edited_image.png to the NFS)
 
-        In the UI, ensure the 'Data Processing Save Path' is 'processed_data/<sequence_name>'
-        and the 'Model Checkpoint Path' is '/root/models/Wan2.1-I2V-14B-480P'.
-
-    2.  Upload your processed data directory to the Modal NFS:
-        > modal nfs put lora-edit-data processed_data/my_awesome_video /my_awesome_video
-        (Replace 'my_awesome_video' with your actual sequence_name if you changed it)
-
-    3.  Run both training and inference on Modal:
-        > modal run modal_app.py --sequence-name my_awesome_video
-
-    4.  To run only inference on an already trained model:
-        a. First, upload your edited first frame:
-           > modal nfs put lora-edit-data path/to/your/edited_image.png /my_awesome_video/edited_image.png
-        b. Then run the script with --skip-train:
-           > modal run modal_app.py --sequence-name my_awesome_video --skip-train
+    --- Jupyter Mode ---
+    How to use:
+    1.  Launch the Jupyter environment on Modal:
+        > modal run modal_app.py --jupyter-mode
+    2.  Click the link provided in the output to open the Jupyter interface.
+    3.  You can upload the `colab_notebook/modal_session.ipynb` notebook to this environment
+        and run it cell-by-cell.
     """
+    if jupyter_mode:
+        print("🚀 Launching remote Jupyter notebook environment...")
+        jupyter.remote()
+        return
+
     if not skip_train:
         print(f"🚀 Starting remote training job for '{sequence_name}'...")
         train.remote(sequence_name)
